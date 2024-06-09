@@ -17,6 +17,7 @@ static void append(char* buf, const char* fmt, ...) {
     va_end(ap);
 }
 
+#if ENABLE_BATTERY
 static int get_battery_percentage(void) {
     FILE* f = fopen("/sys/class/power_supply/" BATTERY_NAME "/capacity", "r");
     if (!f) {
@@ -31,6 +32,26 @@ static int get_battery_percentage(void) {
     fclose(f);
     return bat_perc;
 }
+#endif
+
+#if ENABLE_VOLUME
+static int get_volume_percentage(void) {
+    FILE* f = popen("/usr/bin/wpctl get-volume @DEFAULT_SINK@", "r");
+    if (!f) {
+        return -1;
+    }
+
+    float raw_vol_perc;
+    if (fscanf(f, "Volume: %f\n", &raw_vol_perc) == EOF) {
+        return -1;
+    }
+
+    int vol_perc = (int) (raw_vol_perc * 100.f);
+
+    pclose(f);
+    return vol_perc;
+}
+#endif
 
 int main(void) {
     Display* display = XOpenDisplay(getenv("DISPLAY"));
@@ -55,8 +76,13 @@ int main(void) {
         append(buffer, "[%s]", hostname);
 #endif
 
-// TODO: volume
 #if ENABLE_VOLUME
+        const int vol_perc = get_volume_percentage();
+        if (vol_perc == -1) {
+            append(buffer, "[VOL: N/A]");
+        } else {
+            append(buffer, "[VOL: %d%%]", vol_perc);
+        }
 #endif
 
 #if ENABLE_BATTERY
