@@ -10,6 +10,8 @@
 
 #include "config.h"
 
+#define MUTED (-2)
+
 static void append(char* buf, const char* fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
@@ -42,8 +44,13 @@ static int get_volume_percentage(void) {
     }
 
     float raw_vol_perc;
+    char* muted = NULL;
     if (fscanf(f, "Volume: %f\n", &raw_vol_perc) == EOF) {
         return -1;
+    }
+
+    if (fscanf(f, "[%s]\n", muted) != EOF) {
+        return MUTED;
     }
 
     int vol_perc = (int) (raw_vol_perc * 100.f);
@@ -80,6 +87,8 @@ int main(void) {
         const int vol_perc = get_volume_percentage();
         if (vol_perc == -1) {
             append(buffer, "[VOL: N/A]");
+        } else if (vol_perc == MUTED) {
+            append(buffer, "[VOL: MUTE]");
         } else {
             append(buffer, "[VOL: %d%%]", vol_perc);
         }
