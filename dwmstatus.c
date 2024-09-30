@@ -26,13 +26,19 @@ static int get_battery_percentage(void) {
         return -1;
     }
 
+    int ret = -1;
+
     int bat_perc;
     if (fscanf(f, "%d\n", &bat_perc) == EOF) {
-        return -1;
+        ret = -1;
+        goto end;
     }
 
+    ret = bat_perc;
+
+end:
     fclose(f);
-    return bat_perc;
+    return ret;
 }
 #endif
 
@@ -43,20 +49,24 @@ static int get_volume_percentage(void) {
         return -1;
     }
 
+    int ret = -1;
+
     float raw_vol_perc;
     char* muted = NULL;
     if (fscanf(f, "Volume: %f\n", &raw_vol_perc) == EOF) {
-        return -1;
+        goto end;
     }
 
     if (fscanf(f, "[%s]\n", muted) != EOF) {
-        return MUTED;
+        ret = MUTED;
+        goto end;
     }
 
-    int vol_perc = (int) (raw_vol_perc * 100.f);
+    ret  = (int) (raw_vol_perc * 100.f);
 
+end:
     pclose(f);
-    return vol_perc;
+    return ret;
 }
 #endif
 
