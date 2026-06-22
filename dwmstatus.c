@@ -1,3 +1,5 @@
+#include <X11/Xlib.h>
+
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -5,8 +7,6 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-
-#include <X11/Xlib.h>
 
 #include "config.h"
 
@@ -49,22 +49,19 @@ static int get_volume_percentage(void) {
         return -1;
     }
 
+    char buf[128];
     int ret = -1;
 
-    float raw_vol_perc;
-    char* muted = NULL;
-    if (fscanf(f, "Volume: %f\n", &raw_vol_perc) == EOF) {
-        goto end;
+    if (fgets(buf, sizeof(buf), f)) {
+        float vol;
+
+        if (strstr(buf, "MUTED")) {
+            ret = MUTED;
+        } else if (sscanf(buf, "Volume: %f", &vol) == 1) {
+            ret = (int) (vol * 100.f);
+        }
     }
 
-    if (fscanf(f, "[%s]\n", muted) != EOF) {
-        ret = MUTED;
-        goto end;
-    }
-
-    ret  = (int) (raw_vol_perc * 100.f);
-
-end:
     pclose(f);
     return ret;
 }
@@ -72,7 +69,7 @@ end:
 
 int main(void) {
     Display* display = XOpenDisplay(getenv("DISPLAY"));
-    if (display == NULL) {
+    if (!display) {
         fprintf(stderr, "cannot open X display\n");
         exit(EXIT_FAILURE);
     }
