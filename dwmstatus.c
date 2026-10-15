@@ -1,4 +1,4 @@
-#include <X11/Xlib.h>
+#define _GNU_SOURCE
 
 #include <errno.h>
 #include <stdarg.h>
@@ -44,7 +44,7 @@ end:
 
 #if ENABLE_VOLUME
 static int get_volume_percentage(void) {
-    FILE* f = popen("/usr/bin/wpctl get-volume @DEFAULT_SINK@", "r");
+    FILE* f = popen("/usr/bin/wpctl get-volume @DEFAULT_SINK@ 2>/dev/null", "r");
     if (!f) {
         return -1;
     }
@@ -68,14 +68,6 @@ static int get_volume_percentage(void) {
 #endif
 
 int main(void) {
-    Display* display = XOpenDisplay(getenv("DISPLAY"));
-    if (!display) {
-        fprintf(stderr, "cannot open X display\n");
-        exit(EXIT_FAILURE);
-    }
-
-    Window window = DefaultRootWindow(display);
-
     char buffer[256];
 
 #if ENABLE_HOSTNAME
@@ -83,7 +75,7 @@ int main(void) {
     gethostname(hostname, 20);
 #endif
 
-    while (!usleep(REFRESH_DELAY * 1e6)) {
+    do {
         buffer[0] = '\0';
 
 #if ENABLE_HOSTNAME
@@ -113,12 +105,15 @@ int main(void) {
         const time_t timestamp = time(NULL);
         strftime(buffer + strlen(buffer), sizeof(buffer), "[" TIME_FORMAT "]", localtime(&timestamp));
 
-        XStoreName(display, window, buffer);
-        XSync(display, 0);
-    }
+        puts(buffer);
+        fflush(stdout);
+        if (ferror(stdout)) {
+            perror("stdout");
+            exit(EXIT_FAILURE);
+        }
+    } while (!usleep(REFRESH_DELAY * 1e6));
 
     free(hostname);
 
-    XCloseDisplay(display);
     return EXIT_SUCCESS;
 }
